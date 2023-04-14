@@ -6,15 +6,17 @@ public class PlayerController : MonoBehaviour
 {
     [Header("Ball")]
     [SerializeField] Ball _ball;
-    [SerializeField] private float _ballJumpForce;
+    private float _ballJumpForce = 0;
     private Rigidbody _ballRigidbody;
-    private bool _ballInFlight = false;
+    private bool _ballInAir = false;
 
     [Header("Stick")]
     [SerializeField] Stick _stick;
     [SerializeField] StickJointTail _stickJointTail;
     private SkinnedMeshRenderer stickRender;
     private StickMesh stickMesh;
+
+    private bool ballIsCharged = false;
 
     //private Camera _camera;
 
@@ -36,35 +38,32 @@ public class PlayerController : MonoBehaviour
     private void Update()
     {
 
-        if (_ballInFlight == false)
+        if (_ballInAir == false)
         {
             _ball.transform.position = _stickJointTail.transform.position;
         }
 
 
-
-        if (Input.GetMouseButtonDown(0))
+        if (ballIsCharged == false && Input.GetMouseButtonDown(0))
         {
-            _ballInFlight = true;
-            _ballRigidbody.isKinematic = false;
-            _ballRigidbody.AddForce(Vector3.up * _ballJumpForce, ForceMode.Impulse);
+            ballIsCharged = true;
 
-            stickRender.enabled = false;
+            // вспомнить как получить Y из координат мыши
+            // преобразовать изменение Y мыши в увеличение _ballJumpForce
+
 
         }
 
-        if (Input.GetMouseButtonUp(0))
+
+
+        if (_ballInAir && Input.GetMouseButtonDown(0))
         {
-           
-            // Делает рейкаст в направлении Вперед
             Ray ray = new Ray(_ball.transform.position, _ball.transform.forward);
 
             //Debug.DrawRay(_ball.transform.position, _ball.transform.forward, color:Color.red, 4);
 
             if (Physics.Raycast(ray, out RaycastHit hitInfo))
             {
-                
-
                 if (hitInfo.collider.TryGetComponent(out Block block))
                 {
                     Debug.Log("попали в Блок");
@@ -82,9 +81,25 @@ public class PlayerController : MonoBehaviour
                 }
             }
         }
+
+
+        if (ballIsCharged == true && Input.GetMouseButtonUp(0))
+        {
+            StartBallMoving();
+        }
+
+        //Finish Update
     }
 
 
+    private void StartBallMoving()
+    {
+        _ballInAir = true;
+        _ballRigidbody.isKinematic = false;
+        _ballRigidbody.AddForce(Vector3.up * _ballJumpForce, ForceMode.Impulse);
+
+        stickRender.enabled = false;
+    }
 
 
     private void StopBallMoving()
@@ -93,9 +108,13 @@ public class PlayerController : MonoBehaviour
         _ballRigidbody.velocity = Vector3.zero;
 
         _stick.transform.position = new Vector3(_stick.transform.position.x, _ball.transform.position.y, _stick.transform.position.z);
-        _ballInFlight = false;
+        _ballInAir = false;
         stickRender.enabled = true;
+        ballIsCharged = false;
+        _ballJumpForce = 0;
     }
+
+
 
 
     //public Vector2 GetDirectionFromClick(Vector2 headPosition)
