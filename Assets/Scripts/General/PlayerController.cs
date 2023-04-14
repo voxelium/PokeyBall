@@ -4,55 +4,119 @@ using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
+    [Header("Ball")]
     [SerializeField] Ball _ball;
-    [SerializeField] Stick _stick;
+    [SerializeField] private float _ballJumpForce;
+    private Rigidbody _ballRigidbody;
+    private bool _ballInFlight = false;
 
-    private Camera _camera;
+    [Header("Stick")]
+    [SerializeField] Stick _stick;
+    [SerializeField] StickJointTail _stickJointTail;
+    private SkinnedMeshRenderer stickRender;
+    private StickMesh stickMesh;
+
+    //private Camera _camera;
 
     private void Start()
     {
-        _camera = Camera.main;
-    }
+        _ballRigidbody = _ball.GetComponent<Rigidbody>();
 
+        stickMesh = _stick.GetComponentInChildren<StickMesh>();
+
+        if (stickMesh)
+        {
+            Debug.Log("Стик меш получен");
+        }
+
+        stickRender = stickMesh.GetComponent<SkinnedMeshRenderer>();
+    }
 
 
     private void Update()
     {
 
+        if (_ballInFlight == false)
+        {
+            _ball.transform.position = _stickJointTail.transform.position;
+        }
+
+
+
         if (Input.GetMouseButtonDown(0))
         {
+            _ballInFlight = true;
+            _ballRigidbody.isKinematic = false;
+            _ballRigidbody.AddForce(Vector3.up * _ballJumpForce, ForceMode.Impulse);
+
+            stickRender.enabled = false;
 
         }
 
         if (Input.GetMouseButtonUp(0))
         {
+           
+            // Делает рейкаст в направлении Вперед
+            Ray ray = new Ray(_ball.transform.position, _ball.transform.forward);
 
+            //Debug.DrawRay(_ball.transform.position, _ball.transform.forward, color:Color.red, 4);
 
+            if (Physics.Raycast(ray, out RaycastHit hitInfo))
+            {
+                
+
+                if (hitInfo.collider.TryGetComponent(out Block block))
+                {
+                    Debug.Log("попали в Блок");
+                }
+
+                else if (hitInfo.collider.TryGetComponent(out Segment segment))
+                {
+                    StopBallMoving();
+                    Debug.Log("попали в Сегмент");
+                }
+
+                else if (hitInfo.collider.TryGetComponent(out Finish finish))
+                {
+                    StopBallMoving();
+                }
+            }
         }
-
     }
-          
 
 
-    public Vector2 GetDirectionFromClick(Vector2 headPosition)
+
+
+    private void StopBallMoving()
     {
-        Vector3 mousePosition = Input.mousePosition;
+        _ballRigidbody.isKinematic = true;
+        _ballRigidbody.velocity = Vector3.zero;
 
-        //Преобразует координаты экрана в координаты мира игры, так как координаты экрана могут быть разными для
-        //разных телефонов, ведь экраны у разных телефонов имеют разное разрешение
-        //Это вариант кода для клика в любом месте экрана
-        //mousePosition = Camera.main.ScreenToWorldPoint(mousePosition);
-
-        //В данном варианте при каждом клике Y всегда равен 1 (максимум в режиме ScreenToViewportPoint)
-        mousePosition = _camera.ScreenToViewportPoint(mousePosition);
-        mousePosition.y = 1;
-        mousePosition = _camera.ViewportToWorldPoint(mousePosition);
-
-
-        Vector2 direction = new Vector2(mousePosition.x - headPosition.x, mousePosition.y - headPosition.y);
-
-        return direction;
+        _stick.transform.position = new Vector3(_stick.transform.position.x, _ball.transform.position.y, _stick.transform.position.z);
+        _ballInFlight = false;
+        stickRender.enabled = true;
     }
+
+
+    //public Vector2 GetDirectionFromClick(Vector2 headPosition)
+    //{
+    //    Vector3 mousePosition = Input.mousePosition;
+
+    //    //Преобразует координаты экрана в координаты мира игры, так как координаты экрана могут быть разными для
+    //    //разных телефонов, ведь экраны у разных телефонов имеют разное разрешение
+    //    //Это вариант кода для клика в любом месте экрана
+    //    //mousePosition = Camera.main.ScreenToWorldPoint(mousePosition);
+
+    //    //В данном варианте при каждом клике Y всегда равен 1 (максимум в режиме ScreenToViewportPoint)
+    //    mousePosition = _camera.ScreenToViewportPoint(mousePosition);
+    //    mousePosition.y = 1;
+    //    mousePosition = _camera.ViewportToWorldPoint(mousePosition);
+
+
+    //    Vector2 direction = new Vector2(mousePosition.x - headPosition.x, mousePosition.y - headPosition.y);
+
+    //    return direction;
+    //}
 
 
 
