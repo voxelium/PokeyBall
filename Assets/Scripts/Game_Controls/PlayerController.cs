@@ -18,7 +18,8 @@ public class PlayerController : MonoBehaviour
 
     private bool ballIsCharged = false;
 
-    //private Camera _camera;
+    [SerializeField] private Camera _camera;
+    public float MouseY;
 
     private void Start()
     {
@@ -37,6 +38,10 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
+
+
+        MouseY = GetMouseY() * 10;
+
 
         if (_ballInAir == false)
         {
@@ -115,6 +120,19 @@ public class PlayerController : MonoBehaviour
     }
 
 
+    private float GetMouseY()
+    {
+        Vector3 screenMousePosition = Input.mousePosition;
+        screenMousePosition.z = _camera.nearClipPlane + 1;
+
+        // вариант для возврата координат мыши Viewport
+        Vector2 viewportMousePosition = _camera.ScreenToViewportPoint(screenMousePosition);
+        return viewportMousePosition.y;
+
+        // вариант для возврата Мировых координат мыши
+        //Vector3 worldMousePosition = _camera.ScreenToWorldPoint(screenMousePosition);
+        //return worldMousePosition.y;
+    }
 
 
     //public Vector2 GetDirectionFromClick(Vector2 headPosition)

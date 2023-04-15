@@ -306,9 +306,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _ball: {fileID: 8431339963740917710}
-  _ballJumpForce: 15
   _stick: {fileID: 919132147579391677}
   _stickJointTail: {fileID: 719776681}
+  _camera: {fileID: 1438782164}
+  screenMousePosition: {x: 0, y: 0, z: 0}
+  worldMousePosition: {x: 0, y: 0, z: 0}
 --- !u!4 &838151384
 Transform:
   m_ObjectHideFlags: 0
@@ -436,7 +438,7 @@ GameObject:
   - component: {fileID: 1438782166}
   m_Layer: 0
   m_Name: Camera
-  m_TagString: Untagged
+  m_TagString: MainCamera
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
