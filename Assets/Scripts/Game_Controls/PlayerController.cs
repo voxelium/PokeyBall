@@ -6,7 +6,7 @@ public class PlayerController : MonoBehaviour
 {
     [Header("Ball")]
     [SerializeField] Ball _ball;
-    private float _ballJumpForce = 0;
+    public float _ballJumpForce = 0;
     private Rigidbody _ballRigidbody;
     private bool _ballInAir = false;
 
@@ -19,7 +19,9 @@ public class PlayerController : MonoBehaviour
     private bool ballIsCharged = false;
 
     [SerializeField] private Camera _camera;
-    public float MouseY;
+    public float startMouseY;
+    private float currentMouseY;
+    public float multiplierJumpForce;
 
     private void Start()
     {
@@ -38,25 +40,23 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
-
-
-        MouseY = GetMouseY() * 10;
-
-
         if (_ballInAir == false)
         {
             _ball.transform.position = _stickJointTail.transform.position;
+
+            currentMouseY = GetMouseY();
+            _ballJumpForce = Mathf.Abs(multiplierJumpForce * (startMouseY - currentMouseY));
+        }
+
+        if (_ballInAir == true && Input.GetMouseButtonDown(0))
+        {
+            startMouseY = GetMouseY();
         }
 
 
-        if (ballIsCharged == false && Input.GetMouseButtonDown(0))
+        if (_ballInAir == false && Input.GetMouseButtonUp(0) && _ballJumpForce > 3)
         {
-            ballIsCharged = true;
-
-            // вспомнить как получить Y из координат мыши
-            // преобразовать изменение Y мыши в увеличение _ballJumpForce
-
-
+            StartBallMoving();
         }
 
 
@@ -88,10 +88,7 @@ public class PlayerController : MonoBehaviour
         }
 
 
-        if (ballIsCharged == true && Input.GetMouseButtonUp(0))
-        {
-            StartBallMoving();
-        }
+
 
         //Finish Update
     }
@@ -115,8 +112,9 @@ public class PlayerController : MonoBehaviour
         _stick.transform.position = new Vector3(_stick.transform.position.x, _ball.transform.position.y, _stick.transform.position.z);
         _ballInAir = false;
         stickRender.enabled = true;
-        ballIsCharged = false;
         _ballJumpForce = 0;
+
+        ballIsCharged = false;
     }
 
 
@@ -127,7 +125,7 @@ public class PlayerController : MonoBehaviour
 
         // вариант для возврата координат мыши Viewport
         Vector2 viewportMousePosition = _camera.ScreenToViewportPoint(screenMousePosition);
-        return viewportMousePosition.y;
+        return viewportMousePosition.y * 10;
 
         // вариант для возврата Мировых координат мыши
         //Vector3 worldMousePosition = _camera.ScreenToWorldPoint(screenMousePosition);
