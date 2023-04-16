@@ -4,9 +4,10 @@ using UnityEngine;
 
 public class Spawner : MonoBehaviour
 {
-    [SerializeField] private Segment _segment;
-    [SerializeField] private Block _block;
-    [SerializeField] private Finish _finishSegment;
+    [SerializeField] private SimpleBlock _simpleBlock;
+    [SerializeField] private BonusBlock _bonusBlock;
+    [SerializeField] private DamageBlock _damageBlock;
+    [SerializeField] private FinishBlock _finishBlock;
     [SerializeField] private int _towerSize;
 
     private void Start()
@@ -21,11 +22,15 @@ public class Spawner : MonoBehaviour
 
         for (int i = 0; i < _towerSize; i++)
         {
-            currentObject = BuildSegments(currentObject, _segment.gameObject);
-            currentObject = BuildSegments(currentObject, _block.gameObject);
+            currentObject = BuildSegments(currentObject, _simpleBlock.gameObject);
+            currentObject = BuildSegments(currentObject, _damageBlock.gameObject);
+            currentObject = BuildSegments(currentObject, _simpleBlock.gameObject);
+            currentObject = BuildSegments(currentObject, _bonusBlock.gameObject);
+            currentObject = BuildSegments(currentObject, _simpleBlock.gameObject);
+            currentObject = BuildSegments(currentObject, _damageBlock.gameObject);
         }
 
-        BuildSegments(currentObject, _finishSegment.gameObject);
+        BuildSegments(currentObject, _finishBlock.gameObject);
 
     }
 

@@ -1,12 +1,13 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 
 public class PlayerController : MonoBehaviour
 {
     [Header("Ball")]
     [SerializeField] Ball _ball;
-    public float _ballJumpForce = 0;
+    private float _ballJumpForce = 0;
     private Rigidbody _ballRigidbody;
     private bool _ballInAir = false;
 
@@ -16,91 +17,137 @@ public class PlayerController : MonoBehaviour
     private SkinnedMeshRenderer stickRender;
     private StickMesh stickMesh;
 
-    private bool ballIsCharged = false;
-
     [SerializeField] private Camera _camera;
-    public float startMouseY;
-    private float currentMouseY;
-    public float multiplierJumpForce;
+    private float startStretchPosition;
+    private float currentStretchPosition;
+    public float multiplierJumpForce = 6;
+
+    public event UnityAction <int> EventGameWin;
+    public event UnityAction <int> EventGameOver;
+    public event UnityAction<int> EventCurrentVolumeUpdate;
+
+    private int bonusCount = 0;
 
     private void Start()
     {
         _ballRigidbody = _ball.GetComponent<Rigidbody>();
-
         stickMesh = _stick.GetComponentInChildren<StickMesh>();
-
-        if (stickMesh)
-        {
-            Debug.Log("Стик меш получен");
-        }
-
         stickRender = stickMesh.GetComponent<SkinnedMeshRenderer>();
     }
 
 
     private void Update()
-    {
-        if (_ballInAir == false)
-        {
-            _ball.transform.position = _stickJointTail.transform.position;
 
-            currentMouseY = GetMouseY();
-            _ballJumpForce = Mathf.Abs(multiplierJumpForce * (startMouseY - currentMouseY));
-        }
-
-        if (_ballInAir == true && Input.GetMouseButtonDown(0))
-        {
-            startMouseY = GetMouseY();
-        }
-
-
-        if (_ballInAir == false && Input.GetMouseButtonUp(0) && _ballJumpForce > 3)
-        {
-            StartBallMoving();
-        }
-
-
-
-        if (_ballInAir && Input.GetMouseButtonDown(0))
-        {
-            Ray ray = new Ray(_ball.transform.position, _ball.transform.forward);
-
-            //Debug.DrawRay(_ball.transform.position, _ball.transform.forward, color:Color.red, 4);
-
-            if (Physics.Raycast(ray, out RaycastHit hitInfo))
+{
+            if (_ball)
             {
-                if (hitInfo.collider.TryGetComponent(out Block block))
+
+            // Начало Stretch управления
+            if (Input.touchCount > 0)
+            {
+                if (_ballInAir == false && Input.GetTouch(0).phase == TouchPhase.Began)
                 {
-                    Debug.Log("попали в Блок");
+                    startStretchPosition = GetMouseY();
                 }
 
-                else if (hitInfo.collider.TryGetComponent(out Segment segment))
+
+                // Stretch управление 
+                if (_ballInAir == false && Input.GetTouch(0).phase == TouchPhase.Moved)
                 {
-                    StopBallMoving();
-                    Debug.Log("попали в Сегмент");
+                    _ball.transform.position = _stickJointTail.transform.position;
+
+                    currentStretchPosition = GetMouseY();
+                    _ballJumpForce = Mathf.Abs(multiplierJumpForce * (startStretchPosition - currentStretchPosition));
+
+                    _ballJumpForce = Mathf.Clamp(_ballJumpForce, 0, 25);
+                    _stick._stickAnimator.SetFloat("Blend", _ballJumpForce / 25f);
+
                 }
 
-                else if (hitInfo.collider.TryGetComponent(out Finish finish))
+                // Условие для полета шара
+                if (_ballInAir == false && Input.GetTouch(0).phase == TouchPhase.Ended)
                 {
-                    StopBallMoving();
+                    StartBallMoving();
+                    HideStick();
+                    StartCoroutine(SetBallInAirTrue());
                 }
+
+                // Условие для остановки шара
+                if (_ballInAir == true && Input.GetTouch(0).phase == TouchPhase.Began)
+                {
+                    Ray ray = new Ray(_ball.transform.position, _ball.transform.forward);
+
+                    //Debug.DrawRay(_ball.transform.position, _ball.transform.forward, color:Color.red, 4);
+
+                    if (Physics.Raycast(ray, out RaycastHit hitInfo))
+                    {
+                        if (hitInfo.collider.TryGetComponent(out DamageBlock damageBlock))
+                        {
+                            ShowStick();
+                            StartCoroutine(HideStickOnBlock());
+
+                            bonusCount--;
+                            EventCurrentVolumeUpdate?.Invoke(bonusCount);
+                        }
+
+                        else if (hitInfo.collider.TryGetComponent(out SimpleBlock simpleBlock))
+                        {
+                            StopBallMoving();
+                            ShowStick();
+                            _ball.transform.position = _stickJointTail.transform.position;
+                        }
+
+                        else if (hitInfo.collider.TryGetComponent(out BonusBlock bonusBlock))
+                        {
+                            StopBallMoving();
+                            ShowStick();
+                            _ball.transform.position = _stickJointTail.transform.position;
+
+                            bonusCount++;
+                            EventCurrentVolumeUpdate?.Invoke(bonusCount);
+                        }
+
+
+                        else if (hitInfo.collider.TryGetComponent(out FinishBlock finish))
+                        {
+                            StopBallMoving();
+                            Destroy(_ball);
+                            Destroy(_stick);
+
+                            if (bonusCount > 0)
+                            {
+                                EventGameWin?.Invoke(bonusCount);
+                            }
+                            else if (bonusCount <= 0)
+                            {
+                                GameOver();
+                            }
+
+                            
+                            
+                        }
+                    }
+                }
+
             }
+
         }
 
-
-
-
-        //Finish Update
     }
 
 
     private void StartBallMoving()
     {
-        _ballInAir = true;
         _ballRigidbody.isKinematic = false;
         _ballRigidbody.AddForce(Vector3.up * _ballJumpForce, ForceMode.Impulse);
+        _stick._stickAnimator.SetFloat("Blend", 0);
 
-        stickRender.enabled = false;
+        StartCoroutine(SetBallInAirTrue());
+
+        if (_ballJumpForce == 0)
+        {
+            Debug.Log(_ballJumpForce);
+        }
     }
 
 
@@ -108,13 +155,9 @@ public class PlayerController : MonoBehaviour
     {
         _ballRigidbody.isKinematic = true;
         _ballRigidbody.velocity = Vector3.zero;
-
-        _stick.transform.position = new Vector3(_stick.transform.position.x, _ball.transform.position.y, _stick.transform.position.z);
-        _ballInAir = false;
-        stickRender.enabled = true;
         _ballJumpForce = 0;
 
-        ballIsCharged = false;
+        StartCoroutine(SetBallInAirFalse());
     }
 
 
@@ -125,7 +168,7 @@ public class PlayerController : MonoBehaviour
 
         // вариант для возврата координат мыши Viewport
         Vector2 viewportMousePosition = _camera.ScreenToViewportPoint(screenMousePosition);
-        return viewportMousePosition.y * 10;
+        return viewportMousePosition.y * 10f;
 
         // вариант для возврата Мировых координат мыши
         //Vector3 worldMousePosition = _camera.ScreenToWorldPoint(screenMousePosition);
@@ -133,27 +176,45 @@ public class PlayerController : MonoBehaviour
     }
 
 
-    //public Vector2 GetDirectionFromClick(Vector2 headPosition)
-    //{
-    //    Vector3 mousePosition = Input.mousePosition;
-
-    //    //Преобразует координаты экрана в координаты мира игры, так как координаты экрана могут быть разными для
-    //    //разных телефонов, ведь экраны у разных телефонов имеют разное разрешение
-    //    //Это вариант кода для клика в любом месте экрана
-    //    //mousePosition = Camera.main.ScreenToWorldPoint(mousePosition);
-
-    //    //В данном варианте при каждом клике Y всегда равен 1 (максимум в режиме ScreenToViewportPoint)
-    //    mousePosition = _camera.ScreenToViewportPoint(mousePosition);
-    //    mousePosition.y = 1;
-    //    mousePosition = _camera.ViewportToWorldPoint(mousePosition);
+    private void ShowStick()
+    {
+        _stick.transform.position = new Vector3(_stick.transform.position.x, _ball.transform.position.y, _stick.transform.position.z);
+        stickRender.enabled = true;
+    }
 
 
-    //    Vector2 direction = new Vector2(mousePosition.x - headPosition.x, mousePosition.y - headPosition.y);
+    private void HideStick()
+    {
+         stickRender.enabled = false;
+    }
 
-    //    return direction;
-    //}
+
+    IEnumerator HideStickOnBlock()
+    {
+        yield return new WaitForSeconds(0.05f);
+        HideStick();
+    }
 
 
+    IEnumerator SetBallInAirFalse()
+    {
+        yield return new WaitForSeconds(0.3f);
+        _ballInAir = false;
+    }
+
+
+    IEnumerator SetBallInAirTrue()
+    {
+        yield return new WaitForSeconds(0.3f);
+        _ballInAir = true;
+    }
+
+
+
+    public void GameOver()
+    {
+        EventGameOver?.Invoke(0);
+    }
 
 
 }
